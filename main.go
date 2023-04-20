@@ -8,14 +8,13 @@ import (
 
 func main(){
 	mes := flag.String("message","text","text message")
-	chose := flag.Bool("choosing method",true,"encode")
+	chose := flag.Bool("mode",true,"encode")
 	if *chose{
 		encryptResult, err := EncryptMessage(*mes);if err!= nil{
 			fmt.Println(err)
 		}
 		fmt.Println(encryptResult)
-	}
-	if *chose!=true{
+	}else{
 	    decryptResult, err := DecryptMessage(encryptResult);if err!= nil{
 		fmt.Println(err)
 		}
