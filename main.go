@@ -1,22 +1,35 @@
 package main
 
 import (
-	"crypto/aes"
-	"crypto/cipher"
 	"encoding/base64"
 	"fmt"
 	"flag"
-	"encoding/binary"
 )
 
 func main(){
 	mes := flag.String("message","text","text message")
-	chipherKey := flag.Bool("key","key","key chipher")
-	fmt.Println(EncryptMessage(*chipherKey,*mes))
+	chose := flag.Bool("choosing method",true,"encode")
+	if *chose{
+		encryptResult, err := EncryptMessage(*mes);if err!= nil{
+			fmt.Println(err)
+		}
+		fmt.Println(encryptResult)
+	        decryptResult, err := DecryptMessage(encryptResult);if err!= nil{
+		fmt.Println(err)
+		}
+		fmt.Println(decryptResult)
+	}
 }
 
-func EncryptMessage(key []byte, message string) (string,error){
-	key := []byte(message)
-	return base64.StdEncoding.EncodeToString(cipherText),nil
+func EncryptMessage(message string) (string,error) {
+	byteMsg := []byte(message)
+	return base64.StdEncoding.EncodeToString(byteMsg),nil
+}
 
+func DecryptMessage(message string) (string, error) {
+	cipherText, err := base64.StdEncoding.DecodeString(message)
+	if err != nil {
+	  return "", fmt.Errorf("could not base64 decode: %v", err)
+	}
+	return string(cipherText), nil
 }
