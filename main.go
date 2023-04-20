@@ -15,7 +15,7 @@ func main(){
 		}
 		fmt.Println(encryptResult)
 	}else{
-	    decryptResult, err := DecryptMessage(encryptResult);if err!= nil{
+	    decryptResult, err := DecryptMessage(*mes);if err!= nil{
 		fmt.Println(err)
 		}
 		fmt.Println(decryptResult)
