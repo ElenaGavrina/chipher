@@ -7,16 +7,17 @@ import (
 )
 
 func main(){
-	mes := flag.String("message","text","text message")
-	chose := flag.Bool("mode",true,"encode")
-	if *chose{
+	var mes = flag.String("message","text","text message")
+    	var choose = flag.Bool("mode",true,"encode")
+	flag.Parse()
+	if *choose{
 		encryptResult, err := EncryptMessage(*mes);if err!= nil{
 			fmt.Println(err)
 		}
 		fmt.Println(encryptResult)
 	}else{
 	    decryptResult, err := DecryptMessage(*mes);if err!= nil{
-		fmt.Println(err)
+			fmt.Println(err)
 		}
 		fmt.Println(decryptResult)
 	}
@@ -30,7 +31,7 @@ func EncryptMessage(message string) (string,error) {
 func DecryptMessage(message string) (string, error) {
 	cipherText, err := base64.StdEncoding.DecodeString(message)
 	if err != nil {
-	  return "", fmt.Errorf("could not base64 decode: %v", err)
+		return "", fmt.Errorf("could not base64 decode: %v", err)
 	}
 	return string(cipherText), nil
 }
