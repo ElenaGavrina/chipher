@@ -18,21 +18,21 @@ func main(){
 	
 	flag.Parse()
 	if *choose{
-		encryptResult, err := EncryptMessage(fromStrToByte(*key),*mes);if err!= nil{
+		encryptResult, err := EncryptMessage(*key,*mes);if err!= nil{
 			fmt.Println(err)
 		}
 		fmt.Println(encryptResult)
 	}else{
-	    decryptResult, err := DecryptMessage(fromStrToByte(*key),*mes);if err!= nil{
+	    decryptResult, err := DecryptMessage(*key,*mes);if err!= nil{
 			fmt.Println(err)
 		}
 		fmt.Println(decryptResult)
 	}
 }
 
-func EncryptMessage(key []byte, message string) (string,error) {
+func EncryptMessage(key string, message string) (string,error) {
 	byteMsg := []byte(message)
-	block, err := aes.NewCipher(key)
+	block, err := aes.NewCipher([]byte(key))
 	if err != nil {
 		return "", fmt.Errorf("could not create new cipher: %v", err)
 	}
@@ -47,14 +47,15 @@ func EncryptMessage(key []byte, message string) (string,error) {
 	return base64.StdEncoding.EncodeToString(byteMsg),nil
 }
 
-func DecryptMessage(key []byte,message string) (string, error) {
-	cipherText,err := base64.StdEncoding.DecodeString(message)
-	block, err := aes.NewCipher(key)
-	if err != nil {
-		return "", fmt.Errorf("could not create new cipher: %v", err)
-	}
+func DecryptMessage(key string,message string) (string, error) {
+	cipherText, err := base64.StdEncoding.DecodeString(message)
 	if err != nil {
 		return "", fmt.Errorf("could not base64 decode: %v", err)
+	}
+
+	block, err := aes.NewCipher([]byte(key))
+	if err != nil {
+		return "", fmt.Errorf("could not create new cipher: %v", err)
 	}
 	
 	iv := cipherText[:aes.BlockSize]
@@ -63,9 +64,4 @@ func DecryptMessage(key []byte,message string) (string, error) {
 	stream := cipher.NewCFBDecrypter(block, iv)
 	stream.XORKeyStream(cipherText, cipherText)
 	return string(cipherText), nil
-}
-
-func fromStrToByte(key string)[]byte{
-	newKey:= []byte(key)
-	return newKey
 }
