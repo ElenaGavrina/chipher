@@ -22,48 +22,51 @@ func main(){
 	if *mode {
 		if *file != ""{
 			encF := fromFileToByte(*file, *key)
-			err := ioutil.WriteFile("ciphertext.bin", []byte(encF), 0777)
+			err := (ioutil.WriteFile("ciphertext.bin", []byte(encF), 0777))
 			if err != nil {
 				log.Fatalf("write file err: %v", err.Error())
 			}
 		}
 		if *mes != ""{
-			encM:=fromMesToByte(*mes, *key)
-			fmt.Println(encM)
+			encM,err:=fromMesToByte(*mes, *key)
+			if err!=nil{
+				log.Fatalf("write string err: %v", err.Error())
+			}
+			fmt.Println(base64.StdEncoding.EncodeToString(encM))
 		}
 	}
 }
 
-func fromMesToByte(message string, key string)string{
+func fromMesToByte(message string, key string) ([]byte,error){
 	byteMsg := []byte(message)
 	res,err:=encode(byteMsg, key)
 	if err!= nil{
-		return err.Error()
+		return nil,err
 	}
-	return res
+	return res,nil
 }
-func fromFileToByte(message string, key string)string{
+func fromFileToByte(message string, key string)[]byte{
 	plainText, err := ioutil.ReadFile(message)
 	if err != nil {
 		log.Fatalf("read file err: %v", err.Error())
 	}
 	res,err := encode(plainText, key)
 	if err!= nil{
-		return err.Error()
+		return nil
 	}
 	return res
 }
-func encode(message []byte,key string)(string,error){
+func encode(message []byte,key string)([]byte,error){
 	block, err := aes.NewCipher([]byte(key))
 	if err != nil {
-		return "", fmt.Errorf("could not create new cipher: %v", err)
+		return nil, fmt.Errorf("could not create new cipher: %v", err)
 	}
 	cipherText := make([]byte, aes.BlockSize+len(message))
 	iv := cipherText[:aes.BlockSize]
 	if _, err = io.ReadFull(rand.Reader, iv); err != nil {
-		return "", fmt.Errorf("could not encrypt: %v", err)
+		return nil, fmt.Errorf("could not encrypt: %v", err)
 	}
 	stream := cipher.NewCFBEncrypter(block, iv)
 	stream.XORKeyStream(cipherText[aes.BlockSize:], message)
-	return base64.StdEncoding.EncodeToString(message),nil
+	return message,nil
 }
