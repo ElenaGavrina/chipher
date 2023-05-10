@@ -22,7 +22,7 @@ func main(){
 	if *mode {
 		if *file != ""{
 			encF := fromFileToByte(*file, *key)
-			err := ioutil.WriteFile("ciphertext.bin", []byte(encF), 0777)
+			err := ioutil.WriteFile("ciphertext.txt", []byte(encF), 0777)
 			if err != nil {
 				log.Fatalf("write file err: %v", err.Error())
 			}
@@ -31,29 +31,61 @@ func main(){
 			encM:=fromMesToByte(*mes, *key)
 			fmt.Println(encM)
 		}
+	}else{
+		if *file !=""{
+			decF := fromFileToByte(*file, *key)
+			err := ioutil.WriteFile("myfile.txt", []byte(decF), 0777)
+			if err != nil {
+				log.Fatalf("write file err: %v", err.Error())
+			}
+		}
+		if *mes != ""{
+			decM:=fromMesToByte(*mes, *key)
+			fmt.Println(decM)
+			}
+		 
 	}
 }
 
-func fromMesToByte(message string, key string)string{
+func fromMesToByte (message string, key string) string {
 	byteMsg := []byte(message)
-	res,err:=encode(byteMsg, key)
-	if err!= nil{
-		return err.Error()
+	if *mode{
+		res,err:=encode(byteMsg, key)
+		if err!= nil{
+			return err.Error()
+		}
+		return res
+	}else{
+		res,err:=decode(byteMsg, key)
+		if err!= nil{
+			return err.Error()
+		}
+		return res
 	}
-	return res
 }
-func fromFileToByte(message string, key string)string{
+
+func fromFileToByte (message string, key string) string {
 	plainText, err := ioutil.ReadFile(message)
 	if err != nil {
 		log.Fatalf("read file err: %v", err.Error())
 	}
-	res,err := encode(plainText, key)
-	if err!= nil{
-		return err.Error()
+	if *mode{
+		res,err := encode(plainText, key)
+		if err!= nil{
+			return err.Error()
+		}	
+		return res
+	}else{
+		res,err := decode(plainText, key)
+		if err!= nil{
+			return err.Error()
+		}	
+		return res
 	}
-	return res
+	
 }
-func encode(message []byte,key string)(string,error){
+
+func encode(message []byte, key string) (string, error) {
 	block, err := aes.NewCipher([]byte(key))
 	if err != nil {
 		return "", fmt.Errorf("could not create new cipher: %v", err)
@@ -66,4 +98,20 @@ func encode(message []byte,key string)(string,error){
 	stream := cipher.NewCFBEncrypter(block, iv)
 	stream.XORKeyStream(cipherText[aes.BlockSize:], message)
 	return base64.StdEncoding.EncodeToString(message),nil
+}
+
+func decode(message []byte,key string) (string, error){
+	cipherText, err := base64.StdEncoding.DecodeString(string(message))
+	if err != nil {
+		return "", fmt.Errorf("could not base64 decode: %v", err)
+	}
+	block, err := aes.NewCipher([]byte(key))
+	if err != nil {
+		return "", fmt.Errorf("could not create new cipher: %v", err)
+	}
+	iv := cipherText[:aes.BlockSize]
+	cipherText = cipherText[aes.BlockSize:]
+	stream := cipher.NewCFBDecrypter(block, iv)
+	stream.XORKeyStream(cipherText, cipherText)
+	return string(cipherText), nil
 }
