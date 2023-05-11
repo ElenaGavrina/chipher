@@ -19,7 +19,7 @@ var file = flag.String("fp","","file path")
 
 func main(){
 	flag.Parse()
-	if *mode { //text to code
+	if *mode { 
 		if *file != ""{
 			plainText, err := ioutil.ReadFile(*file)
 			encriptText, _ := EncryptMessage([]byte(*key), string(plainText))
