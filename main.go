@@ -10,29 +10,38 @@ import (
 	"io"
 	"fmt"
 	"encoding/base64"
+	"os"
 )
 
-var mes = flag.String("mes","text","text message")
-var mode = flag.Bool("mode",true,"encode")
-var key = flag.String("k","1234567890abcdef","key chipher")
-var file = flag.String("fp","","file path")
+var mess = flag.String("mess","","Enter your text for encription/dencription ")
+var mode = flag.Bool("mode",true,"Select encription/dencription mode")
+var key = flag.String("key","1234567890abcdef","Enter key for encription/dencription your text")
+var file = flag.String("input","","Enter path to your text file")
+var result = flag.String("output","","Enter path to file with output result")
 
 func main(){
 	flag.Parse()
 	if *mode { 
 		if *file != ""{
 			plainText, err := ioutil.ReadFile(*file)
-			encriptText, _ := EncryptMessage([]byte(*key), string(plainText))
-			errWrite := ioutil.WriteFile("ciphertextresult.txt", []byte(encriptText), 0777)
-			if errWrite != nil {
-				log.Fatalf("write file err: %v", err.Error())
-			}
 			if err != nil {
 				log.Fatalf("write file err: %v", err.Error())
 			}
+			encriptText, _ := EncryptMessage([]byte(*key), string(plainText))
+			if err != nil {
+				log.Fatalf("write file err: %v", err.Error())
+			}
+			errWrite := ioutil.WriteFile(*result, []byte(encriptText), 0777)
+			fmt.Println("The encrypted file has been created")
+			if errWrite != nil {
+				log.Fatalf("write file err: %v", err.Error())
+			}
 		}
-		if *mes != ""{
-			encM,_:=EncryptMessage([]byte(*key), *mes,)
+		if *mess != ""{
+			encM, err :=EncryptMessage([]byte(*key), *mess,)
+			if err != nil {
+				log.Fatalf("write file err: %v", err.Error())
+			}
 			fmt.Println(encM)
 		}
 	}else{
@@ -42,16 +51,17 @@ func main(){
 			if err != nil {
 				log.Fatalf("write file err: %v", err.Error())
 			}
-			errWrite:= ioutil.WriteFile("textresult.txt", []byte(decriptTextT), 0777)
+			errWrite:= ioutil.WriteFile(*result, []byte(decriptTextT), 0777)
+			fmt.Println("The decrypted file has been created")
 			if errWrite != nil {
 				log.Fatalf("write file err: %v", err.Error())
 			}
+		}
+		if *mess != ""{
+			decM, err :=DecryptMessage([]byte(*key),*mess)
 			if err != nil {
 				log.Fatalf("write file err: %v", err.Error())
 			}
-		}
-		if *mes != ""{
-			decM,_:=DecryptMessage([]byte(*key),*mes)
 			fmt.Println(decM)
 			}
 		 
@@ -98,4 +108,18 @@ func DecryptMessage(key []byte, message string) (string, error) {
 	stream.XORKeyStream(cipherText, cipherText)
 
 	return string(cipherText), nil
+}
+
+
+func checkOutputName(name string){
+	files, err := ioutil.ReadDir("D:\\Projects\\encryption")
+	if err != nil {
+    	fmt.Println(err)
+    	os.Exit(1)
+	}
+ 	for _, file := range files {
+    	if name == file.Name(){
+        	fmt.Println("this name is already taken! Please choose another one")
+    	}
+	}
 }
