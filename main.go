@@ -11,6 +11,7 @@ import (
 	"fmt"
 	"encoding/base64"
 	"os"
+	"strings"
 )
 
 var mess = flag.String("mess","","Enter your text for encription/dencription ")
@@ -23,6 +24,7 @@ func main(){
 	flag.Parse()
 	if *mode { 
 		if *file != ""{
+			checkOutputName(*result)
 			plainText, err := ioutil.ReadFile(*file)
 			if err != nil {
 				log.Fatalf("write file err: %v", err.Error())
@@ -46,6 +48,7 @@ func main(){
 		}
 	}else{
 		if *file !=""{
+			checkOutputName(*result)
 			encriptPlainTextT, _ := ioutil.ReadFile(*file)
 			decriptTextT, err := DecryptMessage([]byte(*key), string(encriptPlainTextT))
 			if err != nil {
@@ -111,8 +114,12 @@ func DecryptMessage(key []byte, message string) (string, error) {
 }
 
 
-func checkOutputName(name string){
-	files, err := ioutil.ReadDir("D:\\Projects\\encryption")
+func checkOutputName(path string){
+	slOfStr := strings.Split(path,"\\")
+	name := slOfStr[len(slOfStr)-1]
+	folder := strings.Join(slOfStr[:len(slOfStr)-1],"\\")
+
+	files, err := ioutil.ReadDir(folder)
 	if err != nil {
     	fmt.Println(err)
     	os.Exit(1)
