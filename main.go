@@ -12,6 +12,7 @@ import (
 	"encoding/base64"
 	"os"
 	"strings"
+	//"path/filepath"
 )
 
 var mess = flag.String("mess","","Enter your text for encription/dencription ")
@@ -114,8 +115,8 @@ func DecryptMessage(key []byte, message string) (string, error) {
 }
 
 
-func checkOutputName(path string){
-	slOfStr := strings.Split(path,"\\")
+func checkOutputName(path string) bool {
+	slOfStr := strings.Split(path,string(os.PathSeparator))
 	name := slOfStr[len(slOfStr)-1]
 	folder := strings.Join(slOfStr[:len(slOfStr)-1],"\\")
 
@@ -126,7 +127,9 @@ func checkOutputName(path string){
 	}
  	for _, file := range files {
     	if name == file.Name(){
-        	fmt.Println("this name is already taken! Please choose another one")
+			log.Fatal("This name is already taken! Please choose another one")
+			return false
     	}
 	}
+	return true
 }
