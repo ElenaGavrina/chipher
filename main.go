@@ -131,7 +131,6 @@ func checkOutputName(path string) bool {
 	}
  	for _, file := range files {
     	if name == file.Name(){
-			log.Fatal("This name is already taken! Please choose another one")
 			return true
     	}
 	}
