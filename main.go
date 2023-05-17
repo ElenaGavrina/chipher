@@ -25,7 +25,9 @@ func main(){
 	flag.Parse()
 	if *mode { 
 		if *file != ""{
-			checkOutputName(*result)
+			if checkOutputName(*result){
+				log.Fatal("This name is already taken! Please choose another one")
+			}
 			plainText, err := ioutil.ReadFile(*file)
 			if err != nil {
 				log.Fatalf("write file err: %v", err.Error())
@@ -49,7 +51,9 @@ func main(){
 		}
 	}else{
 		if *file !=""{
-			checkOutputName(*result)
+			if checkOutputName(*result){
+				log.Fatal("This name is already taken! Please choose another one")
+			}
 			encriptPlainTextT, _ := ioutil.ReadFile(*file)
 			decriptTextT, err := DecryptMessage([]byte(*key), string(encriptPlainTextT))
 			if err != nil {
@@ -128,8 +132,8 @@ func checkOutputName(path string) bool {
  	for _, file := range files {
     	if name == file.Name(){
 			log.Fatal("This name is already taken! Please choose another one")
-			return false
+			return true
     	}
 	}
-	return true
+	return false
 }
