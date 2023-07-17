@@ -1,7 +1,6 @@
 package main
 
 import (
-	"flag"
 	"log"
 	"io/ioutil"
 	"crypto/aes"
@@ -11,100 +10,168 @@ import (
 	"fmt"
 	"encoding/base64"
 	"os"
-	"strings"
 	"net/http"
+	"encoding/json"
+	
 )
 
-
-var mess = flag.String("mess","","Enter your text for encription/dencription ")
-var mode = flag.Bool("mode",true,"Select encription/dencription mode")
-var key = flag.String("key","1234567890abcdef","Enter key for encription/dencription your text")
-var file = flag.String("input","","Enter path to your text file")
-var result = flag.String("output","","Enter path to file with output result")
-
 func encodingString (w http.ResponseWriter, r *http.Request) {
-	if *mode {
-		if *mess != ""{
-					encM, err :=EncryptMessage([]byte(*key), *mess,)
-					if err != nil {
-						log.Fatalf("write file err: %v", err.Error())
-					}
-					fmt.Println(encM)
-		}
+	w.WriteHeader(http.StatusCreated)
+	w.Header().Set("Content-Type", "application/json")
+
+	if r.Method != "POST" {
+		http.Error(w, "Invalid request method.", http.StatusMethodNotAllowed)
 	}
+
+	data, _ := io.ReadAll(r.Body)
+	defer r.Body.Close()
+
+	var TextRequest struct {
+		Text string
+		Key string
+	}
+
+	err := json.Unmarshal(data, &TextRequest)
+	if err != nil {
+		log.Fatalf("Error happened in JSON unmarshal. Err: %s", err)
+	}
+
+	enc,err := EncryptMessage(TextRequest.Text, []byte(TextRequest.Key))
+	if err != nil {
+		log.Fatalf("%v", err.Error())
+	}
+
+	res, err := json.Marshal(enc)
+	if err != nil {
+		log.Fatalf("Error happened in JSON marshal. Err: %s", err)
+	}
+
+	fmt.Println(string(res))
+	
+}
+
+func decodingString (w http.ResponseWriter, r *http.Request) {
+	w.WriteHeader(http.StatusCreated)
+	w.Header().Set("Content-Type", "application/json")
+
+	if r.Method != "POST" {
+		http.Error(w, "Invalid request method.", http.StatusMethodNotAllowed)
+	}
+
+	data, _ := ioutil.ReadAll(r.Body)
+	defer r.Body.Close()
+
+	var CipherRequest struct {
+		Cipher string
+		Key string
+	}
+
+	err := json.Unmarshal(data, &CipherRequest)
+	if err != nil {
+		log.Fatalf("Error happened in JSON unmarshal. Err: %s", err)
+	}
+    
+	dec, err := DecryptMessage(CipherRequest.Cipher, []byte(CipherRequest.Key))
+	if err != nil {
+		log.Fatalf("%v", err.Error())
+	}
+
+	res, err := json.Marshal(dec)
+	if err != nil {
+		log.Fatalf("Error happened in JSON marshal. Err: %s", err)
+	}
+
+	fmt.Println(string(res))
 
 }
 
 func encodingFile (w http.ResponseWriter, r *http.Request) {
-	if *mode { 
-			if *file != ""{
-				if checkOutputName(*result){
-					log.Fatal("This name is already taken! Please choose another one")
-				}
-				plainText, err := ioutil.ReadFile(*file)
-				if err != nil {
-					log.Fatalf("write file err: %v", err.Error())
-				}
-				encriptText, _ := EncryptMessage([]byte(*key), string(plainText))
-				if err != nil {
-					log.Fatalf("write file err: %v", err.Error())
-				}
-				errWrite := ioutil.WriteFile(*result, []byte(encriptText), 0777)
-				fmt.Println("The encrypted file has been created")
-				if errWrite != nil {
-					log.Fatalf("write file err: %v", err.Error())
-				}
-			}
-	}
-}
-
-func decodingString (w http.ResponseWriter, r *http.Request) {
-	if *mess != ""{
-		decM, err :=DecryptMessage([]byte(*key),*mess)
-		if err != nil {
-			log.Fatalf("write file err: %v", err.Error())
-		}
-		fmt.Println(decM)
+	if r.Method != "POST" {
+		http.Error(w, "Invalid request method.", http.StatusMethodNotAllowed)
 	}
 	
+	r.ParseMultipartForm(10 << 20)
+	multForm:=r.MultipartForm
+	for key := range multForm.File {
+		file, fileHeader, err := r.FormFile(key)
+    	if err != nil {
+        	fmt.Println("Error Retrieving the File")
+        	fmt.Println(err)
+        	return
+    	}
+		defer file.Close()
+		fmt.Printf("the uploaded file: name[%s], size[%d], header[%#v]\n",
+            fileHeader.Filename, fileHeader.Size, fileHeader.Header)
+
+			tempFile, err := ioutil.TempFile("temp-text", "upload-*.txt")
+			if err != nil {
+				fmt.Println(err)
+			}
+			defer tempFile.Close()
+		
+			fileBytes, err := ioutil.ReadAll(file)
+			if err != nil {
+				fmt.Println(err)
+			}
+			eKey := multForm.Value["key"][0]
+			enc, err := EncryptMessage(string(fileBytes), []byte(eKey))
+		
+			tempFile.Write([]byte(enc))
+	}
+
 }
 
 func decodingFile (w http.ResponseWriter, r *http.Request) {
-	if *file !=""{
-		if checkOutputName(*result){
-			log.Fatal("This name is already taken! Please choose another one")
-		}
-		encriptPlainTextT, _ := ioutil.ReadFile(*file)
-		decriptTextT, err := DecryptMessage([]byte(*key), string(encriptPlainTextT))
-		if err != nil {
-			log.Fatalf("write file err: %v", err.Error())
-		}
-		errWrite:= ioutil.WriteFile(*result, []byte(decriptTextT), 0777)
-		fmt.Println("The decrypted file has been created")
-		if errWrite != nil {
-			log.Fatalf("write file err: %v", err.Error())
-		}
+	if r.Method != "POST" {
+		http.Error(w, "Invalid request method.", http.StatusMethodNotAllowed)
+	}
+	
+	r.ParseMultipartForm(10 << 20)
+	multForm:=r.MultipartForm
+	for key := range multForm.File {
+		file, fileHeader, err := r.FormFile(key)
+    	if err != nil {
+        	fmt.Println("Error Retrieving the File")
+        	fmt.Println(err)
+        	return
+    	}
+		defer file.Close()
+		fmt.Printf("the uploaded file: name[%s], size[%d], header[%#v]\n",
+            fileHeader.Filename, fileHeader.Size, fileHeader.Header)
+
+			tempFile, err := ioutil.TempFile("dec-file", "decrypt-*.txt")
+			if err != nil {
+				fmt.Println(err)
+			}
+			defer tempFile.Close()
+		
+			fileBytes, err := ioutil.ReadAll(file)
+			if err != nil {
+				fmt.Println(err)
+			}
+			eKey := multForm.Value["key"][0]
+			dec, err := DecryptMessage(string(fileBytes), []byte(eKey))
+		
+			tempFile.Write([]byte(dec))
 	}
 
 }
 
 func main(){
-	flag.Parse()
 	mux := http.NewServeMux()
-	mux.HandleFunc("/estrind", encodingString)
-	mux.HandleFunc("/efile", encodingFile)
-	mux.HandleFunc("/dstring",decodingString)
-	mux.HandleFunc("/dfile",decodingFile)
-	err := http.ListenAndServe(":3333", mux)
+	mux.HandleFunc("/es", encodingString)
+	mux.HandleFunc("/ds", decodingString)
+	mux.HandleFunc("/ef", encodingFile)
+	mux.HandleFunc("/df", decodingFile)
+	err := http.ListenAndServe(":8080", mux)
 	if err != nil {
 		fmt.Printf("error starting server: %s\n", err)
 		os.Exit(1)
 	}
 	
-	
 }
 
-func EncryptMessage(key []byte, message string) (string, error) {
+func EncryptMessage(message string,key []byte) (string, error) {
 	byteMsg := []byte(message)
 	block, err := aes.NewCipher(key)
 	if err != nil {
@@ -123,7 +190,8 @@ func EncryptMessage(key []byte, message string) (string, error) {
 	return base64.StdEncoding.EncodeToString(cipherText), nil
 }
 
-func DecryptMessage(key []byte, message string) (string, error) {
+func DecryptMessage(message string, key []byte) (string, error) {
+	
 	cipherText, err := base64.StdEncoding.DecodeString(message)
 	if err != nil {
 		return "", fmt.Errorf("could not base64 decode: %v", err)
@@ -145,23 +213,3 @@ func DecryptMessage(key []byte, message string) (string, error) {
 
 	return string(cipherText), nil
 }
-
-
-func checkOutputName(path string) bool {
-	slOfStr := strings.Split(path,string(os.PathSeparator))
-	name := slOfStr[len(slOfStr)-1]
-	folder := strings.Join(slOfStr[:len(slOfStr)-1],"\\")
-
-	files, err := ioutil.ReadDir(folder)
-	if err != nil {
-    	fmt.Println(err)
-    	os.Exit(1)
-	}
- 	for _, file := range files {
-    	if name == file.Name(){
-			return true
-    	}
-	}
-	return false
-}
-
