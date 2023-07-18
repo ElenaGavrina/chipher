@@ -1,21 +1,20 @@
 package main
 
 import (
-	"log"
-	"io/ioutil"
 	"crypto/aes"
 	"crypto/cipher"
 	"crypto/rand"
-	"io"
-	"fmt"
 	"encoding/base64"
-	"os"
-	"net/http"
 	"encoding/json"
-	
+	"fmt"
+	"io"
+	"io/ioutil"
+	"log"
+	"net/http"
+	"os"
 )
 
-func encodingString (w http.ResponseWriter, r *http.Request) {
+func encodingString(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusCreated)
 	w.Header().Set("Content-Type", "application/json")
 
@@ -27,8 +26,8 @@ func encodingString (w http.ResponseWriter, r *http.Request) {
 	defer r.Body.Close()
 
 	var TextRequest struct {
-		Text string
-		Key string
+		Text string `json:"text"`
+		Key  string `json:"key"`
 	}
 
 	err := json.Unmarshal(data, &TextRequest)
@@ -36,7 +35,7 @@ func encodingString (w http.ResponseWriter, r *http.Request) {
 		log.Fatalf("Error happened in JSON unmarshal. Err: %s", err)
 	}
 
-	enc,err := EncryptMessage(TextRequest.Text, []byte(TextRequest.Key))
+	enc, err := EncryptMessage(TextRequest.Text, []byte(TextRequest.Key))
 	if err != nil {
 		log.Fatalf("%v", err.Error())
 	}
@@ -47,10 +46,10 @@ func encodingString (w http.ResponseWriter, r *http.Request) {
 	}
 
 	fmt.Println(string(res))
-	
+
 }
 
-func decodingString (w http.ResponseWriter, r *http.Request) {
+func decodingString(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusCreated)
 	w.Header().Set("Content-Type", "application/json")
 
@@ -62,15 +61,15 @@ func decodingString (w http.ResponseWriter, r *http.Request) {
 	defer r.Body.Close()
 
 	var CipherRequest struct {
-		Cipher string
-		Key string
+		Cipher string `json:"cipher"`
+		Key    string `json:"key"`
 	}
 
 	err := json.Unmarshal(data, &CipherRequest)
 	if err != nil {
 		log.Fatalf("Error happened in JSON unmarshal. Err: %s", err)
 	}
-    
+
 	dec, err := DecryptMessage(CipherRequest.Cipher, []byte(CipherRequest.Key))
 	if err != nil {
 		log.Fatalf("%v", err.Error())
@@ -85,79 +84,81 @@ func decodingString (w http.ResponseWriter, r *http.Request) {
 
 }
 
-func encodingFile (w http.ResponseWriter, r *http.Request) {
+func encodingFile(w http.ResponseWriter, r *http.Request) {
 	if r.Method != "POST" {
 		http.Error(w, "Invalid request method.", http.StatusMethodNotAllowed)
 	}
-	
-	r.ParseMultipartForm(10 << 20)
-	multForm:=r.MultipartForm
-	for key := range multForm.File {
-		file, fileHeader, err := r.FormFile(key)
-    	if err != nil {
-        	fmt.Println("Error Retrieving the File")
-        	fmt.Println(err)
-        	return
-    	}
-		defer file.Close()
-		fmt.Printf("the uploaded file: name[%s], size[%d], header[%#v]\n",
-            fileHeader.Filename, fileHeader.Size, fileHeader.Header)
 
-			tempFile, err := ioutil.TempFile("temp-text", "upload-*.txt")
-			if err != nil {
-				fmt.Println(err)
-			}
-			defer tempFile.Close()
-		
-			fileBytes, err := ioutil.ReadAll(file)
-			if err != nil {
-				fmt.Println(err)
-			}
-			eKey := multForm.Value["key"][0]
-			enc, err := EncryptMessage(string(fileBytes), []byte(eKey))
-		
-			tempFile.Write([]byte(enc))
+	r.ParseMultipartForm(10 << 20)
+	multForm := r.MultipartForm
+	for key := range multForm.File {
+		file, _, err := r.FormFile(key)
+		if err != nil {
+			fmt.Println("Error Retrieving the File")
+			fmt.Println(err)
+			return
+		}
+		defer file.Close()
+
+		fileBytes, err := ioutil.ReadAll(file)
+		if err != nil {
+			fmt.Println(err)
+		}
+
+		checkingFileFormat(w, fileBytes)
+		//проверка индекса на пустоту. нужна ли?
+		eKey := multForm.Value["key"][0]
+		if eKey == ""{
+			fmt.Println("Your key field is empty. Please, enter the key")
+		}
+		enc, err := EncryptMessage(string(fileBytes), []byte(eKey))
+
+		tempFile, err := ioutil.TempFile("enc-file", "*.txt")
+		if err != nil {
+			fmt.Println(err)
+		}
+		defer tempFile.Close()
+		tempFile.Write([]byte(enc))
 	}
 
 }
 
-func decodingFile (w http.ResponseWriter, r *http.Request) {
+func decodingFile(w http.ResponseWriter, r *http.Request) {
 	if r.Method != "POST" {
 		http.Error(w, "Invalid request method.", http.StatusMethodNotAllowed)
 	}
-	
-	r.ParseMultipartForm(10 << 20)
-	multForm:=r.MultipartForm
-	for key := range multForm.File {
-		file, fileHeader, err := r.FormFile(key)
-    	if err != nil {
-        	fmt.Println("Error Retrieving the File")
-        	fmt.Println(err)
-        	return
-    	}
-		defer file.Close()
-		fmt.Printf("the uploaded file: name[%s], size[%d], header[%#v]\n",
-            fileHeader.Filename, fileHeader.Size, fileHeader.Header)
 
-			tempFile, err := ioutil.TempFile("dec-file", "decrypt-*.txt")
-			if err != nil {
-				fmt.Println(err)
-			}
-			defer tempFile.Close()
-		
-			fileBytes, err := ioutil.ReadAll(file)
-			if err != nil {
-				fmt.Println(err)
-			}
-			eKey := multForm.Value["key"][0]
-			dec, err := DecryptMessage(string(fileBytes), []byte(eKey))
-		
-			tempFile.Write([]byte(dec))
+	r.ParseMultipartForm(10 << 20)
+	multForm := r.MultipartForm
+	for key := range multForm.File {
+		file, _, err := r.FormFile(key)
+		if err != nil {
+			fmt.Println("Error Retrieving the File")
+			fmt.Println(err)
+			return
+		}
+		defer file.Close()
+
+		fileBytes, err := ioutil.ReadAll(file)
+		if err != nil {
+			fmt.Println(err)
+		}
+
+		checkingFileFormat(w, fileBytes)
+		dKey := multForm.Value["key"][0]
+		dec, err := DecryptMessage(string(fileBytes), []byte(dKey))
+
+		tempFile, err := ioutil.TempFile("dec-file", "decrypt-*.txt")
+		if err != nil {
+			fmt.Println(err)
+		}
+		defer tempFile.Close()
+		tempFile.Write([]byte(dec))
 	}
 
 }
 
-func main(){
+func main() {
 	mux := http.NewServeMux()
 	mux.HandleFunc("/es", encodingString)
 	mux.HandleFunc("/ds", decodingString)
@@ -168,14 +169,15 @@ func main(){
 		fmt.Printf("error starting server: %s\n", err)
 		os.Exit(1)
 	}
-	
+
 }
 
-func EncryptMessage(message string,key []byte) (string, error) {
+func EncryptMessage(message string, key []byte) (string, error) {
 	byteMsg := []byte(message)
 	block, err := aes.NewCipher(key)
+	//изменила внутряк, чтобы прога не падала
 	if err != nil {
-		return "", fmt.Errorf("could not create new cipher: %v", err)
+		fmt.Printf("could not create new cipher: %v", err)
 	}
 
 	cipherText := make([]byte, aes.BlockSize+len(byteMsg))
@@ -191,7 +193,7 @@ func EncryptMessage(message string,key []byte) (string, error) {
 }
 
 func DecryptMessage(message string, key []byte) (string, error) {
-	
+
 	cipherText, err := base64.StdEncoding.DecodeString(message)
 	if err != nil {
 		return "", fmt.Errorf("could not base64 decode: %v", err)
@@ -212,4 +214,13 @@ func DecryptMessage(message string, key []byte) (string, error) {
 	stream.XORKeyStream(cipherText, cipherText)
 
 	return string(cipherText), nil
+}
+
+// сделать так чтобы не шифровало невалидируемые файлы!
+func checkingFileFormat(w http.ResponseWriter, data []byte) {
+	filetype := http.DetectContentType(data)
+	if filetype != "text/plain; charset=utf-8" {
+		http.Error(w, "The provided file format is not allowed. Please upload a txt file", http.StatusBadRequest)
+		return
+	}
 }
